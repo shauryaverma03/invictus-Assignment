@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { percentsSumTo100 } from "../lib/money.js";
 
 const CATEGORIES = ["Food", "Travel", "Fun", "Stay"];
@@ -32,6 +32,29 @@ export default function AddExpenseForm({ members, onAdd }) {
     () => members.filter((m) => splitWith.includes(m.id)),
     [members, splitWith]
   );
+
+  // The founding members default to selected in "Split between" because
+  // splitWith is seeded from `members` on first mount. But this form never
+  // unmounts, so anyone added to the group *after* that — via "Add member"
+  // in the Summary panel — was silently left unselected instead, with no
+  // visual difference to flag it. Keep new arrivals included by default,
+  // the same way everyone already in the group is.
+  const prevMemberIdsRef = useRef(members.map((m) => m.id));
+  useEffect(() => {
+    const prevIds = prevMemberIdsRef.current;
+    const newIds = members.map((m) => m.id).filter((id) => !prevIds.includes(id));
+    if (newIds.length) {
+      setSplitWith((prev) => [...prev, ...newIds.filter((id) => !prev.includes(id))]);
+      setPercents((prev) => {
+        const next = { ...prev };
+        newIds.forEach((id) => {
+          if (!(id in next)) next[id] = 0;
+        });
+        return next;
+      });
+    }
+    prevMemberIdsRef.current = members.map((m) => m.id);
+  }, [members]);
 
   // Adding or removing someone from the split should only touch their own
   // percentage row — it must never throw away percentages the user already
