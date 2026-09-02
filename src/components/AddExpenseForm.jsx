@@ -4,7 +4,15 @@ import { percentsSumTo100 } from "../lib/money.js";
 const CATEGORIES = ["Food", "Travel", "Fun", "Stay"];
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  // Build the date from local calendar components, not toISOString() (which
+  // is UTC). For anyone west of Greenwich in the evening, or east of it in
+  // the early morning, toISOString() lands on the *other* calendar day from
+  // what the user's clock actually shows.
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function evenPercents(ids) {
