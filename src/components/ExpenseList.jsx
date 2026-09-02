@@ -36,8 +36,14 @@ function ExpenseRow({ expense, memberMap, onDelete, onSaveAmount }) {
             onChange={(e) => setDraft(e.target.value)}
             onBlur={() => {
               const n = Number(draft);
-              if (Number.isFinite(n) && n > 0 && n !== Number(expense.amount)) {
-                onSaveAmount(n);
+              if (Number.isFinite(n) && n > 0) {
+                // Round to the nearest cent — same reasoning as the Add
+                // Expense form, so an inline edit can't reintroduce
+                // fractional-cent drift into the balances.
+                const rounded = Math.round(n * 100) / 100;
+                if (rounded !== Number(expense.amount)) {
+                  onSaveAmount(rounded);
+                }
               }
             }}
             aria-label={`Edit amount for ${expense.description}`}

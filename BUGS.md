@@ -129,3 +129,33 @@ The root cause: the list was identifying rows by their position in the array (in
 **What I changed:** After an expense saves successfully, the description and amount fields now clear themselves so the form is ready for the next entry. The date field now defaults to today's date instead of a hardcoded one.
 
 ---
+
+## Bug 13
+
+**How to reproduce:** Start adding a new expense. Fill in a description and an amount, but then clear out the Date field entirely (click into it and delete it) and hit "Save expense" anyway.
+
+**What is wrong:** Nothing stops you. The expense gets saved and shows up in the list with the payer's name, then literally the text **"Invalid Date"**, then the split info — right there on screen, no error, no warning. I actually tried it: the row read `Aisha Khan · Invalid Date · split 4 ways`. Worse, that broken date doesn't even error out loudly enough to notice — when it's written to storage, `JSON.stringify` quietly turns the invalid date into `null`, and when the app reads it back, `null` gets treated as "January 1st, 1970." So the expense doesn't crash anything, it just silently drops to the very bottom of "Newest first" forever and shows a nonsense date, and you'd have no idea why unless you went looking. Out of every field on that form, description, amount, and the split all get checked before saving — the date was the one thing nobody validated.
+
+**What I changed:** Added a check right alongside the existing ones: if the date field is empty or doesn't parse into a real date, the form now shows "Pick a valid date." and refuses to save, exactly like it already does for a missing description or a bad amount. This was a genuinely easy one to miss because you'd only find it by actually clearing that field in the browser — reading the code alone, the date field looks no different from any other input.
+
+---
+
+## Bug 14
+
+**How to reproduce:** Add a new expense with an amount like `10.999` (three decimal places instead of two) and split it between a couple of people. The line item itself will look fine — it rounds nicely to "$11.00" on screen. But the group's accounting has actually just gone slightly wrong behind the scenes.
+
+**What is wrong:** This is the sneaky one, because it's invisible on screen — I only found it by directly inspecting the numbers the balance calculator was actually working with, not what got displayed. Here's the mechanism: the app already rounds each person's *share* of a bill down to the cent so nobody's portion has weird fractional pennies (that's a separate fix — see Bug 8). But nothing ever rounded the *original amount typed into the form*. So if you type in `10.999`, the person who paid gets credited with the full, un-rounded `10.999` in the ledger, while the two people splitting it get charged shares that were rounded to a clean `11.00` total. Those two numbers — what the payer's credited and what the group is charged — no longer match, by a fraction of a cent. I actually plugged this exact scenario into the balance calculator directly and measured it: the group's total balance came out to `-0.000999999999990564` instead of a clean zero. It's the exact same "money quietly leaking out of the group's books" problem the split-rounding fix (Bug 8) already solved — just sneaking back in through a completely different door, one bill at a time, until enough of them add up to an actual cent that shows up somewhere.
+
+**What I changed:** Now, the moment an amount is entered — whether adding a brand-new expense or editing one inline in the list — it gets rounded to the nearest cent before it's ever stored or used in any calculation. A stray third decimal place can no longer sneak into the group's books at all.
+
+---
+
+## Bug 15
+
+**How to reproduce:** Start a new expense, switch to "Custom %", and carefully type in a deliberate uneven split — say 70% / 10% / 10% / 10% for four people. Now just click one person's chip off and immediately click it back on, the way you might if you were double-checking who's included, or if you just misclicked.
+
+**What is wrong:** All four of your carefully-typed percentages get wiped out and silently replaced with an even 25/25/25/25 split — even though you never touched the percentage boxes themselves, and even though you put that person right back in the split a second later. I tested it directly: typed in 70/10/10/10, clicked one chip off then back on, and watched all four numbers reset to 25 each. The README is pretty direct about this kind of thing: "what you click is what should change" — but clicking one person's chip was silently changing everyone else's numbers too, with zero warning that it was about to happen. Anyone doing a real, deliberate uneven split (say, "Carlos gets none of this because he skipped dinner") would lose that work the instant they clicked anything in the split-selection area again.
+
+**What I changed:** Toggling someone in or out of the split now only touches *their own* row. Removing someone just drops their percentage and leaves everyone else's numbers exactly as they were. Adding someone back in gives them a starting point of 0% — rather than the app guessing how you want to redistribute the rest of the money on your behalf — so you decide what they owe instead of it silently reshuffling numbers you already set. I also stopped the "Custom %" toggle from resetting your percentages back to even every time you clicked it, unless the group of people actually changed — so switching between "Split equally" and "Custom %" to compare the two no longer throws your custom numbers away either.
+
+---
