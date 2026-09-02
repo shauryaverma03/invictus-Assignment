@@ -18,11 +18,11 @@ export default function BalancesPanel({ members, balances }) {
         let label = "settled up";
         let cls = "settled";
         if (bal > 0.005) {
-          label = `owes ${formatMoney(bal)}`;
-          cls = "owe";
-        } else if (bal < -0.005) {
-          label = `is owed ${formatMoney(-bal)}`;
+          label = `is owed ${formatMoney(bal)}`;
           cls = "owed";
+        } else if (bal < -0.005) {
+          label = `owes ${formatMoney(-bal)}`;
+          cls = "owe";
         }
         return (
           <div className="balance-row" key={m.id}>

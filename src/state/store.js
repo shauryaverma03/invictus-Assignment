@@ -19,7 +19,7 @@ export function loadState(seed) {
       localStorage.setItem(KEY, JSON.stringify(initial));
       return initial;
     }
-    return JSON.parse(raw);
+    return hydrate(JSON.parse(raw));
   } catch {
     return hydrate(seed);
   }
@@ -30,7 +30,10 @@ export function persistState(state) {
 }
 
 export function nextExpenseId() {
-  return `e-${Date.now()}`;
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `e-${crypto.randomUUID()}`;
+  }
+  return `e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function nextMemberId(members) {
@@ -44,14 +47,18 @@ export function reducer(state, action) {
       return { ...state, expenses: [...state.expenses, action.expense] };
     }
     case "DELETE_EXPENSE": {
-      const next = state.expenses.slice();
-      next.splice(action.index, 1);
-      return { ...state, expenses: next };
+      return {
+        ...state,
+        expenses: state.expenses.filter((e) => e.id !== action.id),
+      };
     }
     case "UPDATE_EXPENSE": {
-      const next = state.expenses.slice();
-      next[action.index] = { ...next[action.index], ...action.patch };
-      return { ...state, expenses: next };
+      return {
+        ...state,
+        expenses: state.expenses.map((e) =>
+          e.id === action.id ? { ...e, ...action.patch } : e
+        ),
+      };
     }
     case "ADD_MEMBER": {
       return { ...state, members: [...state.members, action.member] };

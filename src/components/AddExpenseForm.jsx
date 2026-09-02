@@ -3,6 +3,10 @@ import { percentsSumTo100 } from "../lib/money.js";
 
 const CATEGORIES = ["Food", "Travel", "Fun", "Stay"];
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function evenPercents(ids) {
   if (!ids.length) return {};
   const base = Number((100 / ids.length).toFixed(2));
@@ -17,7 +21,7 @@ export default function AddExpenseForm({ members, onAdd }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [paidBy, setPaidBy] = useState(members[0]?.id ?? "");
-  const [date, setDate] = useState("2026-03-16");
+  const [date, setDate] = useState(todayISO());
   const [category, setCategory] = useState("Food");
   const [splitType, setSplitType] = useState("equal");
   const [splitWith, setSplitWith] = useState(members.map((m) => m.id));
@@ -64,6 +68,9 @@ export default function AddExpenseForm({ members, onAdd }) {
       date: new Date(date),
       category,
     });
+
+    setDescription("");
+    setAmount("");
   }
 
   return (
